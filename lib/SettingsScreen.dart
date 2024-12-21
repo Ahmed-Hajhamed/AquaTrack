@@ -1,6 +1,6 @@
-// settings_screen.dart
+// SettingsScreen.dart
 import 'package:flutter/material.dart';
-import 'usersettings.dart';
+import 'UserSettings.dart';
 
 class SettingsScreen extends StatefulWidget {
   @override
@@ -11,7 +11,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int age = 25;
   String gender = 'Male';
   bool isAthlete = false;
-  double dailyGoal = 2000;
+  double height = 170; // in cm
+  double weight = 70; // in kg
+  String levelOfActivity = 'Moderate'; // 'Low', 'Moderate', 'High'
+  bool useRecommendedGoal = true;
+  double dailyGoal = 2000; // Custom daily goal if not using recommended
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(
         title: Text('User Settings'),
       ),
-      body: Padding(
+      body: SingleChildScrollView( // Added to prevent overflow
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -30,13 +34,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               keyboardType: TextInputType.number,
               onChanged: (value) {
                 setState(() {
-                  age = int.parse(value);
+                  age = int.tryParse(value) ?? age;
                 });
               },
               decoration: InputDecoration(hintText: 'Enter your age'),
             ),
-            // Gender input (Radio Buttons)
             SizedBox(height: 20),
+
+            // Gender input
             Text('Gender', style: TextStyle(fontSize: 18)),
             Row(
               children: [
@@ -62,10 +67,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Text('Female'),
               ],
             ),
-            // Athlete status (Switch)
             SizedBox(height: 20),
+
+            // Athlete status
             Text('Are you an athlete?', style: TextStyle(fontSize: 18)),
-            Switch(
+            SwitchListTile(
+              title: Text(isAthlete ? 'Yes' : 'No'),
               value: isAthlete,
               onChanged: (value) {
                 setState(() {
@@ -73,34 +80,131 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 });
               },
             ),
-            // Daily water goal input (Slider)
             SizedBox(height: 20),
-            Text('Daily Water Goal (ml)', style: TextStyle(fontSize: 18)),
-            Slider(
-              min: 1000,
-              max: 5000,
-              value: dailyGoal,
+
+            // Height input
+            Text('Height (cm)', style: TextStyle(fontSize: 18)),
+            TextField(
+              keyboardType: TextInputType.number,
               onChanged: (value) {
                 setState(() {
-                  dailyGoal = value;
+                  height = double.tryParse(value) ?? height;
+                });
+              },
+              decoration: InputDecoration(hintText: 'Enter your height in cm'),
+            ),
+            SizedBox(height: 20),
+
+            // Weight input
+            Text('Weight (kg)', style: TextStyle(fontSize: 18)),
+            TextField(
+              keyboardType: TextInputType.number,
+              onChanged: (value) {
+                setState(() {
+                  weight = double.tryParse(value) ?? weight;
+                });
+              },
+              decoration: InputDecoration(hintText: 'Enter your weight in kg'),
+            ),
+            SizedBox(height: 20),
+
+            // Level of Activity
+            Text('Level of Activity', style: TextStyle(fontSize: 18)),
+            DropdownButton<String>(
+              value: levelOfActivity,
+              onChanged: (String? newValue) {
+                setState(() {
+                  levelOfActivity = newValue!;
+                });
+              },
+              items: <String>['Low', 'Moderate', 'High']
+                  .map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+            ),
+            SizedBox(height: 20),
+
+            // Use Recommended Goal
+            Text('Use Recommended Water Goal?', style: TextStyle(fontSize: 18)),
+            SwitchListTile(
+              title: Text(useRecommendedGoal ? 'Yes' : 'No'),
+              value: useRecommendedGoal,
+              onChanged: (bool value) {
+                setState(() {
+                  useRecommendedGoal = value;
                 });
               },
             ),
-            Text('Goal: ${dailyGoal.toStringAsFixed(0)} ml'),
-            // Save button
             SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                // Return the settings to the previous screen
-                final userSettings = UserSettings(
-                  age: age,
-                  gender: gender,
-                  isAthlete: isAthlete,
-                  dailyGoal: dailyGoal,
-                );
-                Navigator.pop(context, userSettings);
-              },
-              child: Text('Save Settings'),
+
+            // Custom Daily Water Goal Input (if not using recommended)
+            if (!useRecommendedGoal) ...[
+              Text('Set Your Daily Water Goal (ml)', style: TextStyle(fontSize: 18)),
+              Slider(
+                min: 1000,
+                max: 5000,
+                divisions: 40,
+                value: dailyGoal,
+                label: '${dailyGoal.toStringAsFixed(0)} ml',
+                onChanged: (value) {
+                  setState(() {
+                    dailyGoal = value;
+                  });
+                },
+              ),
+              Text('Goal: ${dailyGoal.toStringAsFixed(0)} ml'),
+              SizedBox(height: 20),
+            ],
+
+            // Save button
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  // Compute the recommended daily goal if useRecommendedGoal is true
+                  double finalDailyGoal = dailyGoal;
+                  if (useRecommendedGoal) {
+                    // Implement the formula here
+                    double activityMultiplier = 35; // default for 'Moderate'
+                    if (levelOfActivity == 'Low') {
+                      activityMultiplier = 30;
+                    } else if (levelOfActivity == 'High') {
+                      activityMultiplier = 40;
+                    }
+                    finalDailyGoal = weight * activityMultiplier; // in ml
+
+                    // Adjust for athlete status
+                    if (isAthlete) {
+                      finalDailyGoal += 500; // Add extra 500 ml for athletes
+                    }
+                  }
+                  // Return the settings to the previous screen
+                  final userSettings = UserSettings(
+                    age: age,
+                    gender: gender,
+                    isAthlete: isAthlete,
+                    height: height,
+                    weight: weight,
+                    levelOfActivity: levelOfActivity,
+                    useRecommendedGoal: useRecommendedGoal,
+                    dailyGoal: finalDailyGoal,
+                  );
+                  Navigator.pop(context, userSettings);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  'Save Settings',
+                  style: TextStyle(fontSize: 18),
+                ),
+              ),
             ),
           ],
         ),
