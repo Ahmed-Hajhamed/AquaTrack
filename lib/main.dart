@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'UserSettings.dart';
 import 'SettingsScreen.dart';
+import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
 void main() {
   runApp(SmartWaterBottleApp());
@@ -33,6 +36,11 @@ class _HomePageState extends State<HomePage> {
 
   bool useRecommendedGoal = true; // Track whether to use recommended goal
 
+  // Bluetooth variables
+  BluetoothConnection? connection;
+  BluetoothDevice? connectedDevice;
+  bool isConnecting = false; // To show connection status
+
   @override
   void initState() {
     super.initState();
@@ -48,9 +56,10 @@ class _HomePageState extends State<HomePage> {
       dailyGoal: dailyGoal,
     );
     calculateRecommendedGoal();
+    scanForDevices(); // Start scanning for devices
   }
 
-  // Updated calculateRecommendedGoal() including height
+  // Calculate recommended daily goal
   void calculateRecommendedGoal() {
     // Convert height from cm to meters
     double heightInMeters = userSettings!.height / 100;
@@ -97,60 +106,76 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void showAdjustDailyGoalDialog() {
-    double newDailyGoal = dailyGoal;
+    void scanForDevices() {
+      setState(() {
+        isConnecting = true;
+      });
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              title: Text("Set Daily Water Goal"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text("Adjust your daily water goal (ml):"),
-                  SizedBox(height: 10),
-                  Slider(
-                    min: 1000,
-                    max: 5000,
-                    divisions: 40,
-                    value: newDailyGoal,
-                    label: '${newDailyGoal.toStringAsFixed(0)} ml',
-                    onChanged: (value) {
-                      setStateDialog(() {
-                        newDailyGoal = value;
-                      });
-                    },
-                  ),
-                  Text('Goal: ${newDailyGoal.toStringAsFixed(0)} ml'),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close the dialog
-                  },
-                  child: Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close the dialog
-                    setState(() {
-                      dailyGoal = newDailyGoal;
-                      userSettings!.dailyGoal = newDailyGoal;
-                      waterLevel = 0; // Optionally reset water level
-                    });
-                  },
-                  child: Text('Save'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+      // Start discovery
+      FlutterBluetoothSerial.instance.startDiscovery().listen((BluetoothDiscoveryResult result) {
+        // Check if the device is the one you're looking for
+        if (result.device.name == 'ESP32_WaterBottle') { // Adjust to your device's name
+          FlutterBluetoothSerial.instance.cancelDiscovery();
+          connectToDevice(result.device);
+        }
+      }).onDone(() {
+        if (connectedDevice == null) {
+          setState(() {
+            isConnecting = false; // Failed to connect
+          });
+          // Optionally, show a message or retry
+        }
+      });
+    }
+
+  void connectToDevice(BluetoothDevice device) async {
+    setState(() {
+      connectedDevice = device;
+    });
+
+    try {
+      connection = await BluetoothConnection.toAddress(device.address);
+      setState(() {
+        isConnecting = false;
+      });
+      print('Connected to the device');
+
+      // Listen for incoming data
+      connection!.input!.listen((Uint8List data) {
+        // Handle incoming data
+        String received = utf8.decode(data);
+        double? newWaterLevel = double.tryParse(received);
+        if (newWaterLevel != null) {
+          setState(() {
+            waterLevel = newWaterLevel;
+          });
+        }
+      }).onDone(() {
+        print('Disconnected by remote request or error');
+        disconnectFromDevice();
+      });
+    } catch (exception) {
+      print('Cannot connect, exception occurred');
+      setState(() {
+        isConnecting = false;
+      });
+    }
+  }
+
+  // Set up notifications to receive data
+  void setupNotifications() {
+
+  }
+
+  void disconnectFromDevice() {
+    if (connection != null) {
+      connection!.close();
+      connection = null;
+      setState(() {
+        connectedDevice = null;
+        waterLevel = 0; // Reset water level
+      });
+    }
   }
 
   @override
@@ -162,6 +187,16 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: Text('Smart Water Bottle'),
         actions: [
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: () {
+              if (connectedDevice == null) {
+                scanForDevices();
+              } else {
+                disconnectFromDevice();
+              }
+            },
+          ),
           IconButton(
             icon: Icon(Icons.settings),
             onPressed: () async {
@@ -193,7 +228,19 @@ class _HomePageState extends State<HomePage> {
           // Use Expanded widgets for responsiveness
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Water Intake Card with Buttons
+            // Connection Status
+            Center(
+              child: Text(
+                connectedDevice != null
+                    ? 'Connected to ${connectedDevice!.name}'
+                    : isConnecting
+                        ? 'Connecting...'
+                        : 'Not Connected',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            SizedBox(height: 20),
+            // Water Intake Card
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -217,55 +264,6 @@ class _HomePageState extends State<HomePage> {
                     Text(
                       '${(progress * 100).toStringAsFixed(0)}% of Daily Goal',
                       style: TextStyle(fontSize: 18),
-                    ),
-                    SizedBox(height: 20),
-                    // Add/Subtract Water Intake Buttons
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              waterLevel -= 50; // Subtract 50 ml
-                              if (waterLevel < 0) {
-                                waterLevel = 0; // Minimum of 0
-                              }
-                            });
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.redAccent,
-                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: Text(
-                            '-50 ml',
-                            style: TextStyle(fontSize: 18),
-                          ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              waterLevel += 50; // Add 50 ml
-                              if (waterLevel > dailyGoal) {
-                                waterLevel = dailyGoal; // Cap at daily goal
-                              }
-                            });
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blueAccent,
-                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: Text(
-                            '+50 ml',
-                            style: TextStyle(fontSize: 18),
-                          ),
-                        ),
-                      ],
                     ),
                   ],
                 ),
@@ -327,6 +325,62 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+    );
+  }
+
+  void showAdjustDailyGoalDialog() {
+    double newDailyGoal = dailyGoal;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text("Set Daily Water Goal"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("Adjust your daily water goal (ml):"),
+                  SizedBox(height: 10),
+                  Slider(
+                    min: 1000,
+                    max: 5000,
+                    divisions: 40,
+                    value: newDailyGoal,
+                    label: '${newDailyGoal.toStringAsFixed(0)} ml',
+                    onChanged: (value) {
+                      setStateDialog(() {
+                        newDailyGoal = value;
+                      });
+                    },
+                  ),
+                  Text('Goal: ${newDailyGoal.toStringAsFixed(0)} ml'),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close the dialog
+                  },
+                  child: Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close the dialog
+                    setState(() {
+                      dailyGoal = newDailyGoal;
+                      userSettings!.dailyGoal = newDailyGoal;
+                      waterLevel = 0; // Optionally reset water level
+                    });
+                  },
+                  child: Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
