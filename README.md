@@ -1,4 +1,4 @@
-# samrt_water_bottle_flutter
+# Water Intake Tracking Application with A Smart Water Bottle
 
 A new Flutter project.
 
