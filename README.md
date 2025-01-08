@@ -1,58 +1,60 @@
-# 💧 AquaTrack
+# AquaTrack
 
-### Overview
-The **Smart Water Bottle App** is a cutting-edge IoT application designed to monitor water levels and promote healthy hydration habits. By leveraging compact sensors and real-time data analysis, the app ensures users stay hydrated by providing accurate feedback and alerts.
+## Overview
 
----
+This project is a smart water bottle designed to monitor and track water intake using sensors and provide personalized hydration recommendations. The system uses copper tapes for measuring water levels, an ESP32 microcontroller for data processing, and Type-C charging for power supply. The mobile application is built using Flutter and offers personalized water intake recommendations based on user data such as age, height, weight, gender, and activity level.
 
-## 🌟 Features
+## Features
 
-1. **Water Level Monitoring**:
-   - Measures water levels in real time within a standard 1-liter bottle.
-   - Provides precision readings with the most compact and cost-effective sensors.
+- **Water Level Measurement**: The system uses copper tapes to measure the water level inside the bottle.
+- **Personalized Hydration Recommendations**: The app calculates and provides water intake recommendations based on:
+  - Age
+  - Height
+  - Weight
+  - Gender
+  - Activity Level
+- **Mobile App**: Developed using Flutter, providing an intuitive user interface for tracking and managing water intake.
+- **ESP32 Integration**: The ESP32 microcontroller is used for data processing and communication between the water bottle sensors and the mobile application.
+- **Type-C Battery Charging**: The bottle is equipped with Type-C charging for efficient and fast power management.
 
-2. **Hydration Tracking**:
-   - Tracks daily water consumption and displays progress toward hydration goals.
-   - Offers reminders to drink water based on personalized schedules.
+## Hardware
 
-3. **Data Visualization**:
-   - Real-time graphs showing water level trends.
-   - Historical data stored for analysis of hydration habits.
+- **Water Level Sensors**: Copper tapes are used to detect the water level in the bottle.
+- **Microcontroller**: ESP32 is used for reading sensor data and sending it to the mobile app.
+- **Power**: Type-C USB charging port is used for charging the bottle's battery.
 
-4. **User-Friendly Design**:
-   - Minimalistic interface for easy interaction.
-   - Compatible with mobile devices or desktop platforms.
+## Software
 
----
+### Flutter App
 
-## 🚀 How It Works
+- **Flutter Framework**: The mobile app is built using Flutter to provide a cross-platform solution for iOS and Android.
+- **User Data**: The app collects and uses data (age, height, weight, gender, and activity level) to provide personalized water intake recommendations.
+- **Water Intake Tracking**: The app tracks the water level in real time and notifies the user to drink more water when the intake is low.
 
-- The app integrates with a low-cost sensor placed in the water bottle.
-- Reads water levels and processes data using a calibrated algorithm.
-- Alerts users via notifications when hydration goals are not met.
+### ESP32 Firmware
 
----
+- **Sensor Interface**: Reads the water level from the copper tape sensors.
+- **Communication**: Sends the sensor data to the Flutter mobile app via Bluetooth or Wi-Fi.
 
-## 📦 Technology Stack
+## Installation
 
-- **Programming Language**: Python
-- **Libraries**: NumPy, Matplotlib, PyQt5 for GUI
-- **Hardware**: Distance or water level sensors (e.g., ultrasonic, pressure-based).
+### Hardware Setup
 
----
+1. **Copper Tape Setup**: Attach copper tapes to the water bottle at specific height levels to measure the water level.
+2. **ESP32**: Flash the firmware onto the ESP32 microcontroller.
+3. **Power Supply**: Connect the Type-C charging port for battery charging.
 
-## 🛠️ Setup and Usage
+### Software Setup
 
-1. Connect the sensor to the application via USB/Bluetooth.
-2. Calibrate the bottle size in the app settings.
-3. Start monitoring water levels and track hydration progress.
+1. Clone the repository or download the source code for both the Flutter app and ESP32 firmware.
+2. Follow the installation instructions for Flutter on your machine: [Flutter Installation](https://flutter.dev/docs/get-started/install)
+3. Set up the ESP32 development environment. You can find instructions for this here: [ESP32 Setup](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/)
+4. Compile and upload the ESP32 firmware to the microcontroller.
+5. Build and run the Flutter app on your device.
 
----
+## Usage
 
-## 📫 Contribution and Support
+1. **User Registration**: Open the Flutter app and register by providing your details (age, height, weight, gender, and activity level).
+2. **Water Intake Recommendations**: Based on the information provided, the app will calculate the recommended daily water intake.
+3. **Monitor Water Level**: The app will continuously monitor the water level in the bottle, providing alerts when it's time to drink more water.
 
-Feel free to contribute, report bugs, or suggest features through GitHub issues or pull requests.
-
----
-
-💡 **Stay hydrated, stay healthy!**
